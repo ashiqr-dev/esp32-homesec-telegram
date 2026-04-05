@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Check formatting
+        run: |
+          apt-get update && apt-get install -y clang-format
+          find . -name "*.c" -o -name "*.h" | xargs clang-format --dry-run --Werror
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build
+        run: . /opt/esp/idf/export.sh && idf.py build
