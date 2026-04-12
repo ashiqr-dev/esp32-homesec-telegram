@@ -10,7 +10,7 @@
 #include "esp_system.h"
 #include "esp_wifi.h"
 
-#include "nvs_flash.h"
+#include "storage.h"
 
 #define WIFI_SSID     CONFIG_ESP_WIFI_SSID
 #define WIFI_PASS     CONFIG_ESP_WIFI_PASSWORD
@@ -22,8 +22,6 @@ static EventGroupHandle_t wifi_event_group;
 #define WIFI_FAIL_BIT      BIT1
 
 static const char *TAG = "wifi_sta";
-
-esp_err_t nvs_init(void);
 
 static int retry_num = 0;
 
@@ -51,8 +49,6 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
 
 esp_err_t wifi_init_sta(void)
 {
-    ESP_ERROR_CHECK(nvs_init());
-
     wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -109,14 +105,4 @@ esp_err_t wifi_init_sta(void)
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
         return ESP_ERR_INVALID_RESPONSE;
     }
-}
-
-esp_err_t nvs_init(void)
-{
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    return ret;
 }
