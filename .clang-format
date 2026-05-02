@@ -1,0 +1,13 @@
+BasedOnStyle: LLVM
+UseTab: Never
+IndentWidth: 4
+ColumnLimit: 100
+
+# separates long arguments into each line
+BinPackArguments: false
+AllowAllArgumentsOnNextLine: false
+
+AlignConsecutiveMacros: true
+BreakBeforeBraces: Linux
+
+InsertNewlineAtEOF: true
