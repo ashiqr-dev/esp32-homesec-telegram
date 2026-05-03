@@ -1,0 +1,13 @@
+menu "Project configuration"
+    config ESP_WIFI_SSID
+        string "Wi-Fi SSID"
+        default "myssid"
+        help
+            Wi-Fi network name to connect to.
+    
+    config ESP_WIFI_PASS
+        string "Wi-Fi Password"
+        default "mypass"
+        help
+            Wi-Fi password to use.
+endmenu
