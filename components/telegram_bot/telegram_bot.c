@@ -1,0 +1,86 @@
+#include "telegram_bot.h"
+#include "esp_crt_bundle.h"
+#include "esp_err.h"
+#include "esp_http_client.h"
+#include "esp_log.h"
+#include <stdio.h>
+#include <sys/param.h>
+
+#define TELEGRAM_BOT_TOKEN CONFIG_ESP_TELEGRAM_BOT_TOKEN
+#define TELEGRAM_CHAT_ID   CONFIG_ESP_TELEGRAM_CHAT_ID
+
+#define BASE_URL    "https://api.telegram.org/bot" TELEGRAM_BOT_TOKEN
+
+static esp_err_t get_request(const char *url, int *status_code);
+static esp_err_t post_request(const char *url, const char *body, int *status_code);
+
+esp_err_t telegram_test_bot(void)
+{
+    const char *url = BASE_URL "/getMe";
+
+    int status_code;
+    ESP_ERROR_CHECK(get_request(url, &status_code));
+
+    return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t telegram_send_message(const char *message)
+{
+    const char *url = BASE_URL "/sendMessage";
+    char body[256];
+    snprintf(body, sizeof(body), "{\"chat_id\":\"%s\",\"text\":\"%s\"}", TELEGRAM_CHAT_ID, message);
+
+    int status_code;
+    ESP_ERROR_CHECK(post_request(url, body, &status_code));
+
+    return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
+}
+
+static esp_err_t get_request(const char *url, int *status_code)
+{
+    esp_http_client_config_t config = {
+        .url = url,
+        .method = HTTP_METHOD_GET,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (client == NULL) {
+        return ESP_FAIL;
+    }
+
+    esp_err_t err = esp_http_client_perform(client);
+    if (err != ESP_OK) {
+        return ESP_FAIL;
+    }
+
+    *status_code = esp_http_client_get_status_code(client);
+
+    esp_http_client_cleanup(client);
+    return ESP_OK;
+}
+
+static esp_err_t post_request(const char *url, const char *body, int *status_code)
+{
+    esp_http_client_config_t config = {
+        .url = url,
+        .method = HTTP_METHOD_POST,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (client == NULL) {
+        return ESP_FAIL;
+    }
+
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_post_field(client, body, strlen(body));
+
+    esp_err_t err = esp_http_client_perform(client);
+    if (err != ESP_OK) {
+        return ESP_FAIL;
+    }
+
+    *status_code = esp_http_client_get_status_code(client);
+
+    esp_http_client_cleanup(client);
+    return ESP_OK;
+}

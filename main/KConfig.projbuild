@@ -10,4 +10,16 @@ menu "Project configuration"
         default "mypass"
         help
             Wi-Fi password to use.
+
+    config ESP_TELEGRAM_BOT_TOKEN
+        string "Telegram bot token"
+        default "mytoken"
+        help
+            Telegram bot token for the bot to use.
+
+    config ESP_TELEGRAM_CHAT_ID
+        string "Telegram chat ID"
+        default "123456"
+        help
+            Telegram chat ID for the bot to send messages to.
 endmenu
