@@ -1,8 +1,12 @@
 #include "telegram_bot.h"
+#include "cJSON.h"
 #include "esp_crt_bundle.h"
 #include "esp_err.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
+#include "nvs.h"
+#include "storage.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/param.h>
 
@@ -14,6 +18,10 @@
 #define BASE_URL "https://api.telegram.org/bot" TELEGRAM_BOT_TOKEN
 
 static const char *TAG = "telegram_bot";
+
+static int32_t offset = -1;
+
+esp_err_t extract_update_id(const char *json_string, int32_t *out_value);
 
 static esp_err_t get_updates_request(const char *url, int *status_code, char *response);
 static esp_err_t get_request(const char *url, int *status_code, char *response);
@@ -76,14 +84,52 @@ esp_err_t telegram_send_message(const char *message)
 esp_err_t telegram_get_updates(void)
 {
     ESP_LOGI(TAG, "getUpdates started");
-    const char *url = BASE_URL "/getUpdates?offset=-1&limit=1&timeout=30";
+
+    if (offset == -1) {
+        (void)nvs_read_int32("offset_value", &offset);
+        ESP_LOGI(TAG, "NVS read offset value: %d", offset);
+        offset += 1;
+    }
+
+    char url[128];
+    snprintf(url,
+             sizeof(url),
+             BASE_URL "/getUpdates?offset=%" PRId32 "&limit=1&timeout=30",
+             offset);
 
     int status_code = 0;
     char response[MAX_HTTP_OUTPUT_BUFFER];
     get_updates_request(url, &status_code, response);
 
     ESP_LOGI(TAG, "response to getUpdates:\n%s\n", response);
+
+    (void)extract_update_id(response, &offset);
+    nvs_store_int32("offset_value", offset);
+    ESP_LOGI(TAG, "NVS stored offset value: %d", offset);
+    offset += 1;
+
     return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t extract_update_id(const char *json_string, int32_t *out_value)
+{
+    cJSON *root = cJSON_Parse(json_string);
+    if (root == NULL) {
+        return ESP_FAIL;
+    }
+
+    cJSON *result = cJSON_GetObjectItem(root, "result");
+    cJSON *item = cJSON_GetArrayItem(result, 0);
+    cJSON *id = cJSON_GetObjectItem(item, "update_id");
+
+    if (id == NULL) {
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
+
+    *out_value = (int32_t)id->valueint;
+    cJSON_Delete(root);
+    return ESP_OK;
 }
 
 static esp_err_t get_updates_request(const char *url, int *status_code, char *response)

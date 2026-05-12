@@ -10,6 +10,6 @@ void app_main(void)
     ESP_ERROR_CHECK(telegram_test_bot());
     telegram_send_message("Hello World!");
     for (;;) {
-        telegram_get_updates();
+        (void)telegram_get_updates();
     }
 }
