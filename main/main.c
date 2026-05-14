@@ -8,7 +8,7 @@ void app_main(void)
     ESP_ERROR_CHECK(nvs_init());
     ESP_ERROR_CHECK(wifi_init_sta());
     ESP_ERROR_CHECK(telegram_test_bot());
-    telegram_send_message("Hello World!");
+    (void)telegram_send_message("Hello World!");
     for (;;) {
         (void)telegram_get_updates();
     }
