@@ -13,7 +13,7 @@
 #define TELEGRAM_BOT_TOKEN CONFIG_ESP_TELEGRAM_BOT_TOKEN
 #define TELEGRAM_CHAT_ID   CONFIG_ESP_TELEGRAM_CHAT_ID
 
-#define MAX_HTTP_OUTPUT_BUFFER 2048
+#define MAX_HTTP_OUTPUT_BUFFER 512
 
 #define BASE_URL "https://api.telegram.org/bot" TELEGRAM_BOT_TOKEN
 
@@ -21,11 +21,10 @@ static const char *TAG = "telegram_bot";
 
 static int32_t offset = -1;
 
-esp_err_t extract_update_id(const char *json_string, int32_t *out_value);
-esp_err_t extract_text(const char *json_string, char *out_value, size_t out_size);
+static esp_err_t extract_data(const char *json_string, int32_t *out_update_id, char *out_text,
+                              size_t out_text_size);
 
-static esp_err_t get_updates_request(const char *url, int *status_code, char *response);
-static esp_err_t get_request(const char *url, int *status_code, char *response);
+static esp_err_t get_request(const char *url, int *status_code, char *response, int timeout_ms);
 static esp_err_t post_request(const char *url, const char *body, int *status_code, char *response);
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
@@ -52,7 +51,7 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-esp_err_t telegram_event_handler(const char *message)
+static esp_err_t telegram_event_handler(const char *message)
 {
     ESP_LOGI(TAG, "Incoming text: '%s'", message);
     if (!(message[0] == '/')) {
@@ -71,7 +70,7 @@ esp_err_t telegram_test_bot(void)
 
     int status_code = 0;
     static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
-    ESP_ERROR_CHECK(get_request(url, &status_code, response));
+    ESP_ERROR_CHECK(get_request(url, &status_code, response, 0));
 
     ESP_LOGI(TAG, "response to getMe:\n%s\n", response);
 
@@ -113,29 +112,35 @@ esp_err_t telegram_get_updates(void)
     int status_code = 0;
     static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
     ESP_LOGI(TAG, "reading at: %d", offset);
-    get_updates_request(url, &status_code, response);
+    get_request(url, &status_code, response, (35) * 1000);
 
     ESP_LOGI(TAG, "response to getUpdates:\n%s\n", response);
 
-    esp_err_t err = extract_update_id(response, &offset);
-    (void)nvs_store_int32("offset_value", offset);
-    ESP_LOGI(TAG, "NVS stored offset value: %d", offset);
-    if (err != ESP_ERR_INVALID_RESPONSE) { // push forward only on corrupted or valid JSON
+    if (strlen(response) >= MAX_HTTP_OUTPUT_BUFFER - 1) {
+        ESP_LOGI(TAG, "JSON is too long");
         offset += 1;
+        return ESP_OK;
     }
 
     char text[256] = "";
-    extract_text(response, text, sizeof(text));
+    esp_err_t err = extract_data(response, &offset, text, sizeof(text));
+    (void)nvs_store_int32("offset_value", offset);
+    ESP_LOGI(TAG, "NVS stored offset value: %d", offset);
+    if (err != ESP_FAIL) { // push forward on corrupted or valid JSON
+        offset += 1;
+    }
+
     telegram_event_handler(text);
 
     return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
 }
 
-esp_err_t extract_update_id(const char *json_string, int32_t *out_value)
+static esp_err_t extract_data(const char *json_string, int32_t *out_update_id, char *out_text,
+                              size_t out_text_size)
 {
     cJSON *root = cJSON_Parse(json_string);
     if (root == NULL) { // parsing failed
-        return ESP_FAIL;
+        return ESP_ERR_INVALID_RESPONSE;
     }
 
     cJSON *result = cJSON_GetObjectItem(root, "result");
@@ -151,67 +156,28 @@ esp_err_t extract_update_id(const char *json_string, int32_t *out_value)
         return ESP_ERR_INVALID_RESPONSE;
     }
 
-    *out_value = (int32_t)id->valueint;
-    cJSON_Delete(root);
-    return ESP_OK;
-}
+    *out_update_id = (int32_t)id->valueint;
 
-esp_err_t extract_text(const char *json_string, char *out_value, size_t out_size)
-{
-    cJSON *root = cJSON_Parse(json_string);
-    if (root == NULL) {
-        return ESP_FAIL;
-    }
-
-    cJSON *result = cJSON_GetObjectItem(root, "result");
-    cJSON *item = cJSON_GetArrayItem(result, 0);
     cJSON *message = cJSON_GetObjectItem(item, "message");
     cJSON *text = cJSON_GetObjectItem(message, "text");
-
-    if (text == NULL) {
+    if (text == NULL) { // corrupted json
         cJSON_Delete(root);
-        return ESP_FAIL;
+        return ESP_ERR_INVALID_RESPONSE;
     }
 
-    snprintf(out_value, out_size, "%s", text->valuestring);
+    snprintf(out_text, out_text_size, "%s", text->valuestring);
 
     cJSON_Delete(root);
     return ESP_OK;
 }
 
-static esp_err_t get_updates_request(const char *url, int *status_code, char *response)
+static esp_err_t get_request(const char *url, int *status_code, char *response, int timeout_ms)
 {
     esp_http_client_config_t config = {
         .url = url,
         .method = HTTP_METHOD_GET,
         .crt_bundle_attach = esp_crt_bundle_attach,
-        .timeout_ms = 35000,
-        .user_data = response,
-        .event_handler = http_event_handler,
-    };
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    if (client == NULL) {
-        return ESP_FAIL;
-    }
-
-    esp_err_t err = esp_http_client_perform(client);
-    if (err != ESP_OK) {
-        esp_http_client_cleanup(client);
-        return ESP_FAIL;
-    }
-
-    *status_code = esp_http_client_get_status_code(client);
-
-    esp_http_client_cleanup(client);
-    return ESP_OK;
-}
-
-static esp_err_t get_request(const char *url, int *status_code, char *response)
-{
-    esp_http_client_config_t config = {
-        .url = url,
-        .method = HTTP_METHOD_GET,
-        .crt_bundle_attach = esp_crt_bundle_attach,
+        .timeout_ms = timeout_ms,
         .user_data = response,
         .event_handler = http_event_handler,
     };
