@@ -16,6 +16,7 @@ void app_main(void)
     ESP_ERROR_CHECK(nvs_init());
     ESP_ERROR_CHECK(wifi_init_sta());
     ESP_ERROR_CHECK(telegram_test_bot());
+    ESP_ERROR_CHECK(telegram_register_commands());
     (void)telegram_send_message("Hello World!");
 
     xTaskCreate(telegram_bot, "telegram_bot", 8192, NULL, 5, NULL);

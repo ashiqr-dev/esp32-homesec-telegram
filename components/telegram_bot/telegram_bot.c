@@ -63,6 +63,17 @@ static esp_err_t telegram_event_handler(const char *message)
     return ESP_OK;
 }
 
+esp_err_t telegram_register_commands(void)
+{
+    ESP_LOGI(TAG, "setMyCommands started");
+    const char *url = BASE_URL "/setMyCommands";
+    const char *body = "{\"commands\":[{\"command\":\"arm\",\"description\":\"Arm the system\"}]}";
+
+    static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
+
+    return post_request(url, body, response);
+}
+
 esp_err_t telegram_test_bot(void)
 {
     ESP_LOGI(TAG, "getMe started");
