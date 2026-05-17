@@ -5,6 +5,7 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "storage.h"
+#include "string.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/param.h>
@@ -21,6 +22,7 @@ static const char *TAG = "telegram_bot";
 static int32_t offset = -1;
 
 esp_err_t extract_update_id(const char *json_string, int32_t *out_value);
+esp_err_t extract_text(const char *json_string, char *out_value, size_t out_size);
 
 static esp_err_t get_updates_request(const char *url, int *status_code, char *response);
 static esp_err_t get_request(const char *url, int *status_code, char *response);
@@ -50,13 +52,25 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
+esp_err_t telegram_event_handler(const char *message)
+{
+    ESP_LOGI(TAG, "Incoming text: '%s'", message);
+    if (!(message[0] == '/')) {
+        return ESP_FAIL;
+    }
+    if (strcmp(message, "/arm") == 0) {
+        return telegram_send_message("/arm received!");
+    }
+    return ESP_OK;
+}
+
 esp_err_t telegram_test_bot(void)
 {
     ESP_LOGI(TAG, "getMe started");
     const char *url = BASE_URL "/getMe";
 
     int status_code = 0;
-    char response[MAX_HTTP_OUTPUT_BUFFER];
+    static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
     ESP_ERROR_CHECK(get_request(url, &status_code, response));
 
     ESP_LOGI(TAG, "response to getMe:\n%s\n", response);
@@ -72,7 +86,7 @@ esp_err_t telegram_send_message(const char *message)
     snprintf(body, sizeof(body), "{\"chat_id\":\"%s\",\"text\":\"%s\"}", TELEGRAM_CHAT_ID, message);
 
     int status_code = 0;
-    char response[MAX_HTTP_OUTPUT_BUFFER];
+    static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
     post_request(url, body, &status_code, response);
 
     ESP_LOGI(TAG, "response to sendMessage:\n%s\n", response);
@@ -97,20 +111,52 @@ esp_err_t telegram_get_updates(void)
              offset);
 
     int status_code = 0;
-    char response[MAX_HTTP_OUTPUT_BUFFER];
+    static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
+    ESP_LOGI(TAG, "reading at: %d", offset);
     get_updates_request(url, &status_code, response);
 
     ESP_LOGI(TAG, "response to getUpdates:\n%s\n", response);
 
-    (void)extract_update_id(response, &offset);
-    nvs_store_int32("offset_value", offset);
+    esp_err_t err = extract_update_id(response, &offset);
+    (void)nvs_store_int32("offset_value", offset);
     ESP_LOGI(TAG, "NVS stored offset value: %d", offset);
-    offset += 1;
+    if (err != ESP_ERR_INVALID_RESPONSE) { // push forward only on corrupted or valid JSON
+        offset += 1;
+    }
+
+    char text[256] = "";
+    extract_text(response, text, sizeof(text));
+    telegram_event_handler(text);
 
     return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
 }
 
 esp_err_t extract_update_id(const char *json_string, int32_t *out_value)
+{
+    cJSON *root = cJSON_Parse(json_string);
+    if (root == NULL) { // parsing failed
+        return ESP_FAIL;
+    }
+
+    cJSON *result = cJSON_GetObjectItem(root, "result");
+    cJSON *item = cJSON_GetArrayItem(result, 0);
+    if (item == NULL) { // array is empty
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
+
+    cJSON *id = cJSON_GetObjectItem(item, "update_id");
+    if (id == NULL) { // corrupted json
+        cJSON_Delete(root);
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    *out_value = (int32_t)id->valueint;
+    cJSON_Delete(root);
+    return ESP_OK;
+}
+
+esp_err_t extract_text(const char *json_string, char *out_value, size_t out_size)
 {
     cJSON *root = cJSON_Parse(json_string);
     if (root == NULL) {
@@ -119,14 +165,16 @@ esp_err_t extract_update_id(const char *json_string, int32_t *out_value)
 
     cJSON *result = cJSON_GetObjectItem(root, "result");
     cJSON *item = cJSON_GetArrayItem(result, 0);
-    cJSON *id = cJSON_GetObjectItem(item, "update_id");
+    cJSON *message = cJSON_GetObjectItem(item, "message");
+    cJSON *text = cJSON_GetObjectItem(message, "text");
 
-    if (id == NULL) {
+    if (text == NULL) {
         cJSON_Delete(root);
         return ESP_FAIL;
     }
 
-    *out_value = (int32_t)id->valueint;
+    snprintf(out_value, out_size, "%s", text->valuestring);
+
     cJSON_Delete(root);
     return ESP_OK;
 }
