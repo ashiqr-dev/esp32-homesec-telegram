@@ -24,8 +24,8 @@ static int32_t offset = -1;
 static esp_err_t extract_data(const char *json_string, int32_t *out_update_id, char *out_text,
                               size_t out_text_size);
 
-static esp_err_t get_request(const char *url, int *status_code, char *response, int timeout_ms);
-static esp_err_t post_request(const char *url, const char *body, int *status_code, char *response);
+static esp_err_t get_request(const char *url, char *response, int timeout_ms);
+static esp_err_t post_request(const char *url, const char *body, char *response);
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
@@ -68,13 +68,12 @@ esp_err_t telegram_test_bot(void)
     ESP_LOGI(TAG, "getMe started");
     const char *url = BASE_URL "/getMe";
 
-    int status_code = 0;
     static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
-    ESP_ERROR_CHECK(get_request(url, &status_code, response, 0));
+    ESP_ERROR_CHECK(get_request(url, response, 0));
 
     ESP_LOGI(TAG, "response to getMe:\n%s\n", response);
 
-    return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
+    return ESP_OK;
 }
 
 esp_err_t telegram_send_message(const char *message)
@@ -84,13 +83,15 @@ esp_err_t telegram_send_message(const char *message)
     char body[256];
     snprintf(body, sizeof(body), "{\"chat_id\":\"%s\",\"text\":\"%s\"}", TELEGRAM_CHAT_ID, message);
 
-    int status_code = 0;
     static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
-    post_request(url, body, &status_code, response);
+    esp_err_t err = post_request(url, body, response);
+    if (err != ESP_OK) {
+        return err;
+    }
 
     ESP_LOGI(TAG, "response to sendMessage:\n%s\n", response);
 
-    return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
+    return ESP_OK;
 }
 
 esp_err_t telegram_get_updates(void)
@@ -109,30 +110,34 @@ esp_err_t telegram_get_updates(void)
              BASE_URL "/getUpdates?offset=%" PRId32 "&limit=1&timeout=30",
              offset);
 
-    int status_code = 0;
     static char response[MAX_HTTP_OUTPUT_BUFFER] = "";
     ESP_LOGI(TAG, "reading at: %d", offset);
-    get_request(url, &status_code, response, (35) * 1000);
+    esp_err_t err = get_request(url, response, (35) * 1000);
+    if (err != ESP_OK) {
+        return err;
+    }
 
     ESP_LOGI(TAG, "response to getUpdates:\n%s\n", response);
 
     if (strlen(response) >= MAX_HTTP_OUTPUT_BUFFER - 1) {
         ESP_LOGI(TAG, "JSON is too long");
         offset += 1;
+        (void)nvs_store_int32("offset_value", offset);
+        ESP_LOGI(TAG, "NVS stored offset value: %d", offset);
         return ESP_OK;
     }
 
     char text[256] = "";
-    esp_err_t err = extract_data(response, &offset, text, sizeof(text));
+    err = extract_data(response, &offset, text, sizeof(text));
     (void)nvs_store_int32("offset_value", offset);
     ESP_LOGI(TAG, "NVS stored offset value: %d", offset);
-    if (err != ESP_FAIL) { // push forward on corrupted or valid JSON
+    if (err != ESP_FAIL) { // push forward on corrupted or valid JSON. only stay if no update id.
         offset += 1;
     }
 
     telegram_event_handler(text);
 
-    return (status_code >= 200 && status_code < 300) ? ESP_OK : ESP_FAIL;
+    return ESP_OK;
 }
 
 static esp_err_t extract_data(const char *json_string, int32_t *out_update_id, char *out_text,
@@ -160,7 +165,7 @@ static esp_err_t extract_data(const char *json_string, int32_t *out_update_id, c
 
     cJSON *message = cJSON_GetObjectItem(item, "message");
     cJSON *text = cJSON_GetObjectItem(message, "text");
-    if (text == NULL) { // corrupted json
+    if (text == NULL) { // corrupted json or non text message
         cJSON_Delete(root);
         return ESP_ERR_INVALID_RESPONSE;
     }
@@ -171,7 +176,7 @@ static esp_err_t extract_data(const char *json_string, int32_t *out_update_id, c
     return ESP_OK;
 }
 
-static esp_err_t get_request(const char *url, int *status_code, char *response, int timeout_ms)
+static esp_err_t get_request(const char *url, char *response, int timeout_ms)
 {
     esp_http_client_config_t config = {
         .url = url,
@@ -192,13 +197,17 @@ static esp_err_t get_request(const char *url, int *status_code, char *response, 
         return ESP_FAIL;
     }
 
-    *status_code = esp_http_client_get_status_code(client);
+    int status_code = esp_http_client_get_status_code(client);
+    if (status_code < 200 || status_code >= 300) {
+        esp_http_client_cleanup(client);
+        return ESP_FAIL;
+    }
 
     esp_http_client_cleanup(client);
     return ESP_OK;
 }
 
-static esp_err_t post_request(const char *url, const char *body, int *status_code, char *response)
+static esp_err_t post_request(const char *url, const char *body, char *response)
 {
     esp_http_client_config_t config = {
         .url = url,
@@ -221,7 +230,11 @@ static esp_err_t post_request(const char *url, const char *body, int *status_cod
         return ESP_FAIL;
     }
 
-    *status_code = esp_http_client_get_status_code(client);
+    int status_code = esp_http_client_get_status_code(client);
+    if (status_code < 200 || status_code >= 300) {
+        esp_http_client_cleanup(client);
+        return ESP_FAIL;
+    }
 
     esp_http_client_cleanup(client);
     return ESP_OK;
