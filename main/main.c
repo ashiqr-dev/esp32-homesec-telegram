@@ -1,16 +1,17 @@
-#include <stdio.h>
-#include <stdbool.h>
 #include "driver/gpio.h"
 #include "esp_log.h"
 
 #include "freertos/FreeRTOS.h"
 
-static const char* TAG = "main";
+#include <stdbool.h>
+#include <stdio.h>
 
-#define GPIO_26 26
+static const char *TAG = "main";
+
+#define GPIO_26      26
 #define GPIO_26_MASK (1ULL << 26)
 
-#define ALARM_PIN GPIO_26
+#define ALARM_PIN      GPIO_26
 #define ALARM_PIN_MASK GPIO_26_MASK
 
 esp_err_t init_gpio(void);
@@ -32,7 +33,7 @@ esp_err_t init_gpio(void)
         .mode = GPIO_MODE_OUTPUT,
         .pin_bit_mask = (ALARM_PIN_MASK),
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_DISABLE
+        .pull_up_en = GPIO_PULLUP_DISABLE,
     };
     return gpio_config(&alarm_io_config);
 }
