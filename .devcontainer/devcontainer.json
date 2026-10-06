@@ -12,7 +12,8 @@
 				"espressif.esp-idf-extension",
 				"espressif.esp-idf-web",
 				"ms-vscode.cpptools",
-                "ms-vscode.cpptools-extension-pack"
+                "ms-vscode.cpptools-extension-pack",
+				"xaver.clang-format"
 			]
 		}
 	},
