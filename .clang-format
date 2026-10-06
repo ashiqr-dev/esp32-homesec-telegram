@@ -9,3 +9,5 @@ AllowAllArgumentsOnNextLine: false
 
 AlignConsecutiveMacros: true
 BreakBeforeBraces: Linux
+
+InsertNewlineAtEOF: true
