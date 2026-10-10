@@ -9,7 +9,6 @@
 #define ALARM_PIN      GPIO_26
 #define ALARM_PIN_MASK GPIO_26_MASK
 
-
 esp_err_t io_init(void)
 {
     gpio_config_t alarm_io_config = {
