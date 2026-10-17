@@ -1,5 +1,5 @@
 ARG DOCKER_TAG=latest
-FROM espressif/idf:${DOCKER_TAG}
+FROM espressif/idf:v6.1
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
