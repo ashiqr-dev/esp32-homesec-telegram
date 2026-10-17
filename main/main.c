@@ -20,6 +20,6 @@ void app_main(void)
     ESP_LOGI(TAG, "esp32_homesec_telegram started");
     ESP_LOGD(TAG, "CPU clock %dMHz", (esp_clk_cpu_freq() / 1000000));
 
-    io_init();
+    ERROR_CHECK_DELAY(io_init());
     ERROR_CHECK_DELAY(io_alarm_set(HIGH));
 }
