@@ -12,7 +12,7 @@
 #include <esp_timer.h>
 
 #define ALARM_PIN         GPIO_NUM_33
-#define DEBOUNCE_DELAY_US 50ULL * 1000
+#define DEBOUNCE_DELAY_US 50ULL * 1000 // 50 ms or 50,000 μs
 
 static const char *TAG = "io_handler";
 
@@ -59,8 +59,6 @@ static void io_task(void *arg);
 static void IRAM_ATTR io_isr_handler(void *arg)
 {
     int64_t now = esp_timer_get_time();
-    // todo: set last_isr_time
-    // note: shouldn't be overflowing; the timer lasts ~290k years
     if (now - last_isr_time > DEBOUNCE_DELAY_US) {
         last_isr_time = now;
         uint32_t gpio_num = (uint32_t)arg;
@@ -118,24 +116,12 @@ esp_err_t io_alarm_set(io_t level)
     return err;
 }
 
-uint64_t isr_trigger_count = 0ULL;
-
-/**
- * TODO: fix interrupt spamming
- * NOTE: the `isr_trigger_count` variable is for isr trigger tracking.
- */
-
 static void io_task(void *arg)
 {
     uint32_t io_num;
     for (;;) {
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            isr_trigger_count += 1;
-            ESP_LOGD(TAG,
-                     "GPIO[%" PRIu32 "] intr, val: %d\n isr_trigger_count:%" PRIu64,
-                     io_num,
-                     gpio_get_level(io_num),
-                     isr_trigger_count);
+            ESP_LOGD(TAG, "GPIO[%" PRIu32 "] intr, val: %d\n", io_num, gpio_get_level(io_num));
         }
     }
 }
