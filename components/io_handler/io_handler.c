@@ -23,9 +23,9 @@ typedef struct {
     gpio_pulldown_t pull_down;
     gpio_pullup_t pull_up;
     gpio_int_type_t intr_type;
-} pin_number;
+} pin_config_t;
 
-static const pin_number pin_nums[] = {
+static const pin_config_t pin_nums[] = {
     {ALARM_PIN, GPIO_MODE_OUTPUT, GPIO_PULLDOWN_DISABLE, GPIO_PULLUP_DISABLE, GPIO_INTR_DISABLE},
 
     {GPIO_NUM_15, GPIO_MODE_INPUT, GPIO_PULLDOWN_DISABLE, GPIO_PULLUP_ENABLE, GPIO_INTR_ANYEDGE},
@@ -108,12 +108,24 @@ esp_err_t io_alarm_set(io_t level)
     return err;
 }
 
+uint64_t isr_trigger_count = 0ULL;
+
+/**
+ * TODO: fix interrupt spamming
+ * NOTE: the `isr_trigger_count` variable is for isr trigger tracking.
+ */
+
 static void io_task(void *arg)
 {
     uint32_t io_num;
     for (;;) {
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            printf("GPIO[%" PRIu32 "] intr, val: %d\n", io_num, gpio_get_level(io_num));
+            isr_trigger_count += 1;
+            ESP_LOGD(TAG,
+                     "GPIO[%" PRIu32 "] intr, val: %d\n isr_trigger_count:%" PRIu64,
+                     io_num,
+                     gpio_get_level(io_num),
+                     isr_trigger_count);
         }
     }
 }
