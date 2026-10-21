@@ -9,12 +9,16 @@
 
 #include "project_utils.h"
 
-#define ALARM_PIN GPIO_NUM_33
+#include <esp_timer.h>
+
+#define ALARM_PIN         GPIO_NUM_33
+#define DEBOUNCE_DELAY_US 50ULL * 1000
 
 static const char *TAG = "io_handler";
 
 #define ESP_INTR_FLAG_DEFAULT 0
 
+static volatile int64_t last_isr_time = 0ULL;
 static QueueHandle_t gpio_evt_queue = NULL;
 
 typedef struct {
@@ -54,8 +58,14 @@ static void io_task(void *arg);
 
 static void IRAM_ATTR io_isr_handler(void *arg)
 {
-    uint32_t gpio_num = (uint32_t)arg;
-    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+    int64_t now = esp_timer_get_time();
+    // todo: set last_isr_time
+    // note: shouldn't be overflowing; the timer lasts ~290k years
+    if (now - last_isr_time > DEBOUNCE_DELAY_US) {
+        last_isr_time = now;
+        uint32_t gpio_num = (uint32_t)arg;
+        xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+    }
 }
 
 esp_err_t io_init(void)
