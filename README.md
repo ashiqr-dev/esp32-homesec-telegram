@@ -154,7 +154,7 @@ Usage instructions will be updated as the project evolves.
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] GPIO interrupts
+- [x] GPIO interrupts
 - [ ] Telegram
 <!-- - [ ] Feature 3
     - [ ] Nested Feature -->
