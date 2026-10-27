@@ -7,6 +7,7 @@
 
 #include "io_handler.h"
 #include "project_utils.h"
+#include "wifi_handler.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -16,10 +17,16 @@ static const char *TAG = "main";
 void app_main(void)
 {
     esp_log_level_set("*", ESP_LOG_VERBOSE);
+    esp_log_level_set("phy_comm", ESP_LOG_INFO);
+    esp_log_level_set("wifi", ESP_LOG_INFO);
+
     printf("\n\n");
     ESP_LOGI(TAG, "esp32_homesec_telegram started");
     ESP_LOGD(TAG, "CPU clock %dMHz", (esp_clk_cpu_freq() / 1000000));
 
     ERROR_CHECK_DELAY(io_init());
     ERROR_CHECK_DELAY(io_alarm_set(HIGH));
+
+    wifi_init_nvs();
+    wifi_init_sta();
 }
