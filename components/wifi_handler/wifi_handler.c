@@ -52,7 +52,15 @@ void wifi_init_sta(void)
     ERROR_CHECK_DELAY(esp_netif_init());
 
     ERROR_CHECK_DELAY(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+
+    const char *hostname = "esp32-homesec-telegram";
+    esp_err_t err = esp_netif_set_hostname(sta_netif, hostname);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to set hostname '%s': %s", hostname, esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG, "hostname successfully set to '%s'", hostname);
+    }
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ERROR_CHECK_DELAY(esp_wifi_init(&cfg));
