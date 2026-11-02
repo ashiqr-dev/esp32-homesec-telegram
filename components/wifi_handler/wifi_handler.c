@@ -5,12 +5,14 @@
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 
+#include "sdkconfig.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
-#define APP_WIFI_SSID             "test"
-#define APP_WIFI_PASS             "test"
-#define EXAMPLE_ESP_MAXIMUM_RETRY 5
+#define APP_WIFI_SSID          CONFIG_APP_WIFI_SSID
+#define APP_WIFI_PASS          CONFIG_APP_WIFI_PASS
+#define APP_WIFI_MAXIMUM_RETRY 5
 
 static EventGroupHandle_t wifi_event_group;
 
@@ -27,7 +29,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
+        if (retry_num < APP_WIFI_MAXIMUM_RETRY) {
             esp_wifi_connect();
             retry_num++;
             ESP_LOGI(TAG, "retry to connect to the AP");
@@ -54,6 +56,7 @@ void wifi_init_sta(void)
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ERROR_CHECK_DELAY(esp_wifi_init(&cfg));
+    ERROR_CHECK_DELAY(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
@@ -88,12 +91,12 @@ void wifi_init_sta(void)
                             WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                             pdFALSE,
                             pdFALSE,
-                            portMAX_DELAY); // TODO: change max delay and add error checking
+                            portMAX_DELAY);
 
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:'%s'", APP_WIFI_SSID);
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s", APP_WIFI_SSID);
+        ESP_LOGI(TAG, "Failed to connect to SSID:'%s'", APP_WIFI_SSID);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
