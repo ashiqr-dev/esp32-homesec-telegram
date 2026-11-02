@@ -77,7 +77,14 @@ void wifi_init_sta(void)
             {
                 .ssid = APP_WIFI_SSID,
                 .password = APP_WIFI_PASS,
+
                 .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+                .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
+                .sae_h2e_identifier = "",
+
+#ifdef CONFIG_ESP_WIFI_WPA3_COMPATIBLE_SUPPORT
+                .disable_wpa3_compatible_mode = 0,
+#endif
             },
     };
     ERROR_CHECK_DELAY(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -86,12 +93,11 @@ void wifi_init_sta(void)
 
     ESP_LOGI(TAG, "wifi_init_sta finished");
 
-    EventBits_t bits =
-        xEventGroupWaitBits(wifi_event_group,
-                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                            pdFALSE,
-                            pdFALSE,
-                            portMAX_DELAY);
+    EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
+                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+                                           pdFALSE,
+                                           pdFALSE,
+                                           portMAX_DELAY);
 
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:'%s'", APP_WIFI_SSID);
