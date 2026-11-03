@@ -1,0 +1,9 @@
+menu "App Wi-Fi Configuraton"
+config APP_WIFI_SSID
+    string "Wi-Fi SSID"
+    default "MySSID"
+
+config APP_WIFI_PASS
+    string "Wi-Fi Password"
+    default "MyPassword"
+endmenu
