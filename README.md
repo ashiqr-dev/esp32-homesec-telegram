@@ -115,16 +115,24 @@ The project is written in C and uses ESP-IDF's APIs. It is a work in progress, w
    ```sh
    idf.py set-target esp32
    ```
-3. Build the project
+3. Configure Wi-Fi credentials
+    ```sh
+    idf.py menuconfig
+    ```
+   - Scroll to `App Wi-Fi Configuration` and press <kbd>Enter</kbd>
+   - Replace `MySSID` and `MyPassword` with your Wi-Fi credentials.
+   - Exit with <kbd>Esc</kbd>x2 and select `Y` to save.
+
+4. Build the project
    ```sh
    idf.py build
    ```
-4. Flash the ESP32
+5. Flash the ESP32
    Connect your ESP32 board and run:
    ```sh
    idf.py flash
    ```
-5. Monitor serial output (optional)
+6. Monitor serial output (optional)
    ```sh
    idf.py monitor
    ```
