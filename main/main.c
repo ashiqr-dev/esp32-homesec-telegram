@@ -12,13 +12,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#define DEBUG
+
 static const char *TAG = "main";
 
 void app_main(void)
 {
-    esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("phy_comm", ESP_LOG_INFO);
-    esp_log_level_set("wifi", ESP_LOG_INFO);
+    esp_log_level_set("*", ESP_LOG_WARN);
+#ifdef DEBUG
+    esp_log_level_set("io_handler", ESP_LOG_DEBUG);
+    esp_log_level_set("wifi_handler", ESP_LOG_DEBUG);
+#endif
 
     printf("\n\n");
     ESP_LOGI(TAG, "esp32_homesec_telegram started");
