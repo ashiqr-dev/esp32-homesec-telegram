@@ -29,17 +29,17 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        ESP_LOGW(TAG, "connect to the AP fail (%d/5)", retry_num + 1);
+        ESP_LOGW(TAG, "Failed to connect to the AP (%d/5)", retry_num + 1);
         if (retry_num < APP_WIFI_MAXIMUM_RETRY - 1) {
             esp_wifi_connect();
             retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
+            ESP_LOGI(TAG, "Retrying to connect to the AP...");
         } else {
             xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT);
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(TAG, "got ip: " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
         retry_num = 0;
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -57,9 +57,9 @@ void wifi_init_sta(void)
     const char *hostname = "esp32-homesec-telegram";
     esp_err_t err = esp_netif_set_hostname(sta_netif, hostname);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "failed to set hostname '%s': %s", hostname, esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to set hostname '%s': %s", hostname, esp_err_to_name(err));
     } else {
-        ESP_LOGI(TAG, "hostname successfully set to '%s'", hostname);
+        ESP_LOGI(TAG, "Hostname successfully set to '%s'", hostname);
     }
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -108,7 +108,7 @@ void wifi_init_sta(void)
                                            portMAX_DELAY);
 
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "connected to ap SSID:'%s'", APP_WIFI_SSID);
+        ESP_LOGI(TAG, "Connected to ap SSID:'%s'", APP_WIFI_SSID);
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGE(TAG, "Failed to connect to SSID:'%s'", APP_WIFI_SSID);
     } else {
