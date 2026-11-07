@@ -108,9 +108,11 @@ void wifi_init_sta(void)
                                            portMAX_DELAY);
 
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "Connected to AP. SSID:'%s'", APP_WIFI_SSID);
+        ESP_LOGI(TAG, "Connected to AP. SSID: '%s'", APP_WIFI_SSID);
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGE(TAG, "Failed to connect to AP. SSID:'%s'", APP_WIFI_SSID);
+        ESP_LOGE(TAG,
+                 "Failed to connect to AP. SSID: '%s'. Are your Wi-Fi credentials set correctly?",
+                 APP_WIFI_SSID);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }

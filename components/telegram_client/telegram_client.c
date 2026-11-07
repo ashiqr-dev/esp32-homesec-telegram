@@ -119,10 +119,17 @@ esp_err_t telegram_getme(void)
     if (err != ESP_OK) {
         return err;
     }
+    int status_code = esp_http_client_get_status_code(client);
+    if (status_code >= 400) {
+        ESP_LOGE(TAG,
+                 "HTTPS request failed with error %d. Is your telegram token set correctly?",
+                 status_code);
+        return ESP_FAIL;
+    }
 
     ESP_LOGD(TAG,
              "HTTPS status = %d, content_length = %" PRId64,
-             esp_http_client_get_status_code(client),
+             status_code,
              esp_http_client_get_content_length(client));
     err = json_parse_getme(local_response_buffer, sizeof(local_response_buffer));
     if (err != ESP_OK) {
