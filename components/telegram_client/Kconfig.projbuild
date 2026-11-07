@@ -1,0 +1,5 @@
+menu "App Telegram Configuration"
+config APP_TELEGRAM_BOT_TOKEN
+    string "Telegram bot token"
+    default "MyBotToken"
+endmenu

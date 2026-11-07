@@ -6,7 +6,11 @@
 #include "esp_log.h"
 #include "esp_tls.h"
 
+#include "sdkconfig.h"
+
 #include <sys/param.h>
+
+#define APP_BOT_TOKEN CONFIG_APP_TELEGRAM_BOT_TOKEN
 
 #define MAX_HTTP_OUTPUT_BUFFER 2048
 static const char *TAG = "telegram_client";
@@ -90,9 +94,7 @@ void https_get(void)
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER + 1U] = {0};
 
     esp_http_client_config_t config = {
-        .url = "https://api.telegram.org/bot"
-               "your-token-here"
-               "/getMe",
+        .url = "https://api.telegram.org/bot" APP_BOT_TOKEN "/getMe",
         .event_handler = http_event_handler,
         .user_data = local_response_buffer,
         .crt_bundle_attach = esp_crt_bundle_attach,

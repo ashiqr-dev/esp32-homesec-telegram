@@ -20,7 +20,7 @@ void vHTTPSTask(void *pvParameters);
 
 void app_main(void)
 {
-    esp_log_level_set("*", ESP_LOG_INFO);
+    esp_log_level_set("*", ESP_LOG_WARN);
 #ifdef DEBUG
     esp_log_level_set("main", ESP_LOG_DEBUG);
     esp_log_level_set("io_handler", ESP_LOG_DEBUG);
