@@ -1,5 +1,6 @@
 #include "telegram_client.h"
 
+#include "esp_crt_bundle.h"
 #include "esp_err.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
@@ -8,7 +9,9 @@
 #include <sys/param.h>
 
 #define MAX_HTTP_OUTPUT_BUFFER 2048
-static const char *TAG = "telegram_client.h";
+static const char *TAG = "telegram_client";
+
+extern const char telegram_root_cert_pem[] asm("_binary_telegram_root_cert_pem_start");
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
@@ -80,4 +83,33 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
         break;
     }
     return ESP_OK;
+}
+
+void https_get(void)
+{
+    char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER + 1U] = {0};
+
+    esp_http_client_config_t config = {
+        .url = "https://api.telegram.org/bot"
+               "your-token-here"
+               "/getMe",
+        .event_handler = http_event_handler,
+        .user_data = local_response_buffer,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .cert_pem = telegram_root_cert_pem,
+        .timeout_ms = 5000,
+    };
+    ESP_LOGD(TAG, "HTTPS GET request with url");
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    esp_err_t err = esp_http_client_perform(client);
+
+    if (err == ESP_OK) {
+        ESP_LOGD(TAG,
+                 "HTTPS status = %d, content_length = %" PRId64,
+                 esp_http_client_get_status_code(client),
+                 esp_http_client_get_content_length(client));
+        ESP_LOGI(TAG, "%s", local_response_buffer);
+    } else {
+        ESP_LOGE(TAG, "Error performing HTTPS request: %s", esp_err_to_name(err));
+    }
 }

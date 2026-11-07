@@ -39,7 +39,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGD(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
         retry_num = 0;
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -99,7 +99,7 @@ void wifi_init_sta(void)
     ERROR_CHECK_DELAY(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ERROR_CHECK_DELAY(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_sta finished");
+    ESP_LOGD(TAG, "wifi_init_sta finished");
 
     EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
@@ -108,9 +108,9 @@ void wifi_init_sta(void)
                                            portMAX_DELAY);
 
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "Connected to ap SSID:'%s'", APP_WIFI_SSID);
+        ESP_LOGI(TAG, "Connected to AP. SSID:'%s'", APP_WIFI_SSID);
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGE(TAG, "Failed to connect to SSID:'%s'", APP_WIFI_SSID);
+        ESP_LOGE(TAG, "Failed to connect to AP. SSID:'%s'", APP_WIFI_SSID);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
