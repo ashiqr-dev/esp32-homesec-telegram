@@ -21,7 +21,12 @@ void vHTTPSTask(void *pvParameters);
 void app_main(void)
 {
     esp_log_level_set("*", ESP_LOG_WARN);
-#ifdef DEBUG
+#ifndef DEBUG
+    esp_log_level_set("main", ESP_LOG_INFO);
+    esp_log_level_set("io_handler", ESP_LOG_INFO);
+    esp_log_level_set("wifi_handler", ESP_LOG_INFO);
+    esp_log_level_set("telegram_client", ESP_LOG_INFO);
+#else
     esp_log_level_set("main", ESP_LOG_DEBUG);
     esp_log_level_set("io_handler", ESP_LOG_DEBUG);
     esp_log_level_set("wifi_handler", ESP_LOG_DEBUG);
