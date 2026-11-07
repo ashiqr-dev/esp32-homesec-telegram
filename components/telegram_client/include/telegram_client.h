@@ -1,3 +1,4 @@
 #pragma once
+#include "esp_err.h"
 
-void https_get(void);
+esp_err_t telegram_getme(void);

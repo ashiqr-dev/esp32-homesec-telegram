@@ -16,7 +16,7 @@
 
 static const char *TAG = "main";
 
-void vHTTPSTask(void *pvParameters);
+void vTelegramTask(void *pvParameters);
 
 void app_main(void)
 {
@@ -44,14 +44,14 @@ void app_main(void)
     wifi_init_sta();
 
     BaseType_t result =
-        xTaskCreatePinnedToCore(vHTTPSTask, "https_task", 8 * 1024, NULL, 1, NULL, 0);
+        xTaskCreatePinnedToCore(vTelegramTask, "telegram_task", 8 * 1024, NULL, 1, NULL, 0);
     if (result != pdPASS) {
         ESP_LOGE(TAG, "Failed to create https_task");
     }
 }
 
-void vHTTPSTask(void *pvParameters)
+void vTelegramTask(void *pvParameters)
 {
-    (void)https_get();
+    ERROR_CHECK_DELAY(telegram_getme());
     vTaskDelete(NULL);
 }
